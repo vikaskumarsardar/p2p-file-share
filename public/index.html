@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlashShare P2P - Zero-Cloud Direct WebRTC File Transfer</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <h1>FlashShare <span class="badge">P2P UDP Full-Duplex</span></h1>
+      </div>
+      
+      <!-- Mode Selector -->
+      <div class="mode-tabs">
+        <button id="tab-signaled" class="mode-tab active">🌐 Automated Signaling</button>
+        <button id="tab-serverless" class="mode-tab">⚡ 100% Serverless (Offline)</button>
+      </div>
+
+      <div class="status-pill" id="connection-status">
+        <span class="dot disconnected"></span>
+        <span id="status-text">Disconnected</span>
+      </div>
+    </header>
+
+    <!-- Main Grid -->
+    <main class="grid-layout">
+      <!-- Left Panel: Connection Radar (Signaled vs Serverless) -->
+      <section class="card glass-card">
+        <!-- MODE 1: SIGNALED RADAR -->
+        <div id="panel-signaled" class="mode-panel">
+          <h2>1. Connection Radar</h2>
+          <p class="subtitle">Join a shared channel to connect directly over UDP.</p>
+
+          <div class="input-group">
+            <label for="room-id">Channel ID</label>
+            <div class="input-row">
+              <input type="text" id="room-id" placeholder="e.g. room-alpha" value="room-alpha">
+              <button id="btn-join" class="btn btn-primary">Join Room</button>
+            </div>
+          </div>
+
+          <div class="peer-list-container">
+            <div class="peer-header">
+              <span>Discovered Peers in Channel</span>
+              <span id="peer-count" class="badge-accent">0 Peers</span>
+            </div>
+            <ul id="peer-list" class="peer-list">
+              <li class="empty-peer">No peers connected. Share your Channel ID!</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- MODE 2: 100% SERVERLESS MANUAL HANDSHAKE -->
+        <div id="panel-serverless" class="mode-panel hidden">
+          <h2>1. Serverless Manual Handshake</h2>
+          <p class="subtitle">Zero-server connection using copy-paste SDP codes.</p>
+
+          <div class="serverless-steps">
+            <!-- Step A: Sender Create Offer -->
+            <div class="serverless-box">
+              <div class="step-badge">Step A: Sender (Host)</div>
+              <button id="btn-create-offer" class="btn btn-accent btn-sm">1. Generate Offer Code</button>
+              <textarea id="local-offer-text" class="code-box" readonly placeholder="Click 'Generate Offer Code' to create your local offer..."></textarea>
+              <button id="btn-copy-offer" class="btn btn-secondary btn-sm" disabled>📋 Copy Offer Code</button>
+            </div>
+
+            <!-- Step B: Receiver Generate Answer -->
+            <div class="serverless-box">
+              <div class="step-badge">Step B: Receiver (Peer)</div>
+              <textarea id="remote-offer-text" class="code-box" placeholder="Paste Sender's Offer Code here..."></textarea>
+              <button id="btn-create-answer" class="btn btn-accent btn-sm">2. Generate Answer Code</button>
+              <textarea id="local-answer-text" class="code-box" readonly placeholder="Your Answer Code will appear here..."></textarea>
+              <button id="btn-copy-answer" class="btn btn-secondary btn-sm" disabled>📋 Copy Answer Code</button>
+            </div>
+
+            <!-- Step C: Sender Connect -->
+            <div class="serverless-box">
+              <div class="step-badge">Step C: Sender Finalize</div>
+              <textarea id="remote-answer-text" class="code-box" placeholder="Paste Receiver's Answer Code here..."></textarea>
+              <button id="btn-connect-answer" class="btn btn-success btn-sm">3. Connect P2P Direct ⚡</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="info-box">
+          <div class="info-icon">🛡️</div>
+          <div class="info-text">
+            <strong>Full-Duplex Bi-Directional Streaming</strong>
+            <p>Send and receive files simultaneously over encrypted WebRTC UDP DataChannels!</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panel: File Transfer Engine (Full-Duplex Dual Panels) -->
+      <section class="card glass-card">
+        <h2>2. Direct File Transfer</h2>
+        <p class="subtitle">Drag & drop single or multiple files to stream over WebRTC.</p>
+
+        <!-- Drag & Drop Zone -->
+        <div class="drop-zone" id="drop-zone">
+          <div class="drop-icon">📁</div>
+          <div class="drop-text">
+            <strong>Drag & Drop Files Here</strong>
+            <span>or <label for="file-input" class="browse-link">browse multiple files</label></span>
+          </div>
+          <input type="file" id="file-input" class="hidden-file-input" multiple>
+        </div>
+
+        <!-- Selected File List Banner -->
+        <div class="file-details hidden" id="file-details">
+          <div class="file-header">
+            <span id="batch-count" class="badge-accent">0 Files Selected</span>
+            <span id="file-size" class="file-size">Total: 0 MB</span>
+          </div>
+          <ul id="selected-file-list" class="selected-file-list"></ul>
+          <button id="btn-send" class="btn btn-success" disabled>⚡ Send All Files Direct to Peers</button>
+        </div>
+
+        <!-- FULL-DUPLEX DUAL DASHBOARDS -->
+        <div class="duplex-container">
+          <!-- 1. Outgoing Upload Dashboard -->
+          <div class="transfer-dashboard hidden" id="send-dashboard">
+            <div class="transfer-header">
+              <span id="send-title" class="transfer-title">Uploading...</span>
+              <div class="header-right">
+                <span id="send-percent" class="transfer-percent">0%</span>
+                <button id="btn-skip-file" class="btn btn-secondary btn-xs" title="Skip current file and move to next in queue">⏩ Skip File</button>
+                <button id="btn-cancel-send" class="btn btn-danger btn-xs" title="Cancel entire upload queue">✖ Cancel All</button>
+              </div>
+            </div>
+
+            <div class="progress-track">
+              <div class="progress-fill send-fill" id="send-progress-bar" style="width: 0%"></div>
+            </div>
+
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <span class="metric-label">Upload Speed</span>
+                <span class="metric-value" id="send-speed">0.00 MB/s</span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-label">Batch Progress</span>
+                <span class="metric-value" id="send-chunks">0 / 0</span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-label">WebRTC RTT</span>
+                <span class="metric-value" id="metric-rtt">-- ms</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Incoming Download Dashboard -->
+          <div class="transfer-dashboard hidden" id="receive-dashboard">
+            <div class="transfer-header">
+              <span id="receive-title" class="transfer-title">Downloading...</span>
+              <div class="header-right">
+                <span id="receive-percent" class="transfer-percent">0%</span>
+                <button id="btn-cancel-receive" class="btn btn-danger btn-xs" title="Cancel active download">✖ Cancel Download</button>
+              </div>
+            </div>
+
+            <div class="progress-track">
+              <div class="progress-fill receive-fill" id="receive-progress-bar" style="width: 0%"></div>
+            </div>
+
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <span class="metric-label">Download Speed</span>
+                <span class="metric-value" id="receive-speed">0.00 MB/s</span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-label">Batch Progress</span>
+                <span class="metric-value" id="receive-chunks">0 / 0</span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-label">Status</span>
+                <span class="metric-value" id="receive-status">Receiving</span>
+              </div>
+            </div>
+
+            <!-- Download Action Area -->
+            <div class="download-area hidden" id="download-area">
+              <div id="downloads-list" class="downloads-list"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
